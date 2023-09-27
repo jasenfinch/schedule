@@ -1,31 +1,32 @@
 use extendr_api::prelude::*;
-use serde::{Serialize, Deserialize};
-use home::home_dir;
 use std::path;
-use std::io::{Result, Write};
-use std::fs::OpenOptions;
+use rusqlite::{Connection, Result};
 
 /// Add a task
 /// @export
 #[extendr]
-fn add_task(time: String, command: String, schedule_type: String) -> &'static str {
-    Task::new(time,command,schedule_type);
-
-    "Added task"
+fn add_task(time: String, command: String, schedule_type: String) -> () {
+    let queue = Queue::new();
+    let _ = queue.add_task(time,command,schedule_type);
+    queue.close();
 }
 
-/// remove a task
+/// Remove a task
 /// @export
 #[extendr]
-fn remove_task(task_id: &str) -> &'static str {
-    todo!()
+fn remove_task(task_id: &str) -> () {
+    let queue = Queue::new();
+    let _ = queue.remove_task(task_id);
+    queue.close();
 }
 
 /// List scheduled tasks
 /// @export
 #[extendr]
-fn list_tasks() -> &'static str {
-    todo!()
+fn list_tasks() -> () {
+    let queue = Queue::new();
+    let _ = queue.list_tasks();
+    queue.close();
 }
 
 /// Activate a scheduling queue
@@ -35,7 +36,6 @@ fn scheduler() -> () {
     todo!()
 }
 
-#[derive(Serialize, Deserialize)]
 enum Status {
     Unknown,
     Waiting,
@@ -46,52 +46,82 @@ enum Status {
 }
 
 
-#[derive(Serialize, Deserialize)]
-struct Task {
-    id: String,
-    time: String,
-    command: String,
-    schedule_type: String,
-    status: Status,
-    pid: u32
+struct Queue {
+    conn: rusqlite::Connection
 }
 
-impl Task {
-    fn new(time: String, command: String, schedule_type: String) -> Task {
-        Task {
-            id: "a_task".to_string(),
-            time,
-            command,
-            schedule_type,
-            status: Status::Waiting,
-            pid: 0
-        }
-    }
-
-    fn add(&self) -> Result<()> {
+impl Queue {
+    fn path() -> path::PathBuf {
         let home_path = match home::home_dir() {
             Some(path) => path,
             None => panic!("Cannot locate home directory!")
         };
 
-        let queue_path = path::Path::new(".schedule/queue/");
-        let task_file = home_path.join(queue_path).join("test.json");
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .append(true)
-            .open(task_file)?;
- 
+        let queue_path = home_path.join(path::Path::new(".schedule/queue.db"));
 
-        let serialized = serde_json::to_string(&self)?;
-        write!(file,"{}\n", serialized)?;
+        return queue_path
+    }
+
+    fn connection(path: path::PathBuf) -> Result<Connection> {
+        Ok(Connection::open(path)?)
+    }
+
+    fn close(self) -> () {
+        let conn = self.conn;
+        let _ = conn.close();
+    }
+
+    fn create(conn: &Connection) -> Result<()>{
+
+        conn.execute(
+            "create table if not exists queue (
+                id integer primary key not null unique,
+                time text not null,
+                command text not null,
+                schedule_type text not null,
+                status text not null,
+                pid integer
+            )",
+            (),
+        )?;
 
         Ok(())
     }
-}
 
-struct Queue {
-    tasks: Vec<Task>
+    fn new() -> Queue {
+        let queue_path = Queue::path();
+        let conn = Queue::connection(queue_path).unwrap();
+
+        let _ = Queue::create(&conn);
+
+        Queue {
+            conn
+        }
+    }
+
+    fn add_task(&self, time: String, command: String, schedule_type: String) -> Result<()> {
+        let conn = &self.conn;
+
+        conn.execute(
+            "INSERT INTO queue (time, command, schedule_type) values (?1, ?2, ?3)",
+            [time,command,schedule_type])?;
+
+        Ok(())
+    }
+
+    fn remove_task(&self, task_id: &str) -> Result<()> {
+        let conn = &self.conn;
+
+        conn.execute(
+            "DELETE FROM queue WHERE id = ?1",
+            [task_id])?;
+
+        Ok(())
+    }
+
+    fn list_tasks(&self) -> () {
+        todo!()
+    }
 }
 
 // Macro to generate exports.
