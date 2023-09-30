@@ -133,8 +133,12 @@ impl Queue {
 
     fn remove() -> () {
         let queue_path = Queue::path();
+        let queue = Queue::new();
+        queue.close();
         
-        fs::remove_file(queue_path).unwrap();
+        if queue_path.exists() {
+            fs::remove_file(queue_path).unwrap();
+        }
     }
 
     fn add_task(&self, time: String, command: String, schedule_type: String) -> Result<()> {
@@ -217,6 +221,12 @@ mod tests {
     }
 
     #[test]
+    fn create_queue(){
+        Queue::new();
+        Queue::remove();
+    }
+
+    #[test]
     fn add_task() {
         Queue::remove();
         let queue = Queue::new();
@@ -229,6 +239,6 @@ mod tests {
 
         println!["{:?}",queue.list_tasks().unwrap()];
 
-        //Queue::remove();
+        Queue::remove();
     }
 }
