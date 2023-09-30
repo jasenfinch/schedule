@@ -119,8 +119,12 @@ impl Queue {
         Ok(())
     }
 
-    fn list_tasks(&self) -> () {
-        todo!()
+    fn list_tasks(&self) -> Result<()> {
+        let conn = &self.conn;
+
+        conn.execute("",())?;
+
+        Ok(())
     }
 }
 
