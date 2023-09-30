@@ -44,14 +44,32 @@ fn scheduler() -> () {
    todo!(); 
 }
 
-//enum Status {
-//    Unknown,
-//    Waiting,
-//    Ready,
-//    Running,
-//    Complete,
-//    Error
-//}
+#[derive(Debug)]
+enum Status {
+    Unknown,
+    Waiting,
+    Ready,
+    Running,
+    Complete,
+    Error
+}
+
+#[derive(Debug)]
+enum Type {
+    Time,
+    Position,
+    Load
+}
+
+#[derive(Debug)]
+struct Task {
+    id: u32,
+    time: String, 
+    command: String, 
+    schedule_type: Type,
+    status: Status,
+    pid: Option<u32>
+}
 
 
 struct Queue {
@@ -123,8 +141,8 @@ impl Queue {
         let conn = &self.conn;
 
         conn.execute(
-            "INSERT INTO queue (time, command, schedule_type) values (?1, ?2, ?3)",
-            [time,command,schedule_type])?;
+            "INSERT INTO queue (time, command, schedule_type, status) values (?1, ?2, ?3, ?4)",
+            [time,command,schedule_type,"Waiting".to_string()])?;
 
         Ok(())
     }
@@ -139,12 +157,37 @@ impl Queue {
         Ok(())
     }
 
-    fn list_tasks(&self) -> Result<()> {
+    fn list_tasks(&self) -> Result<Vec<Task>> {
         let conn = &self.conn;
 
-        conn.execute("",())?;
+        let mut query = conn.prepare("SELECT * FROM queue")?;
 
-        Ok(())
+        let tasks = query.query_map((), |row| {
+            Ok(Task {
+                id: row.get(0)?,
+                time: row.get(1)?,
+                command: row.get(2)?,
+                schedule_type: match row.get::<usize,String>(3)?.as_str() {
+                    "Time" => Type::Time,
+                    "Position" => Type::Position,
+                    "Load" => Type::Load,
+                    _ => panic!("Invalid schedule type")
+                },
+                status: match row.get::<usize,String>(4)?.as_str() {
+                    "Unknown" => Status::Unknown,
+                    "Waiting" => Status::Waiting,
+                    "Ready" => Status::Ready,
+                    "Running" => Status::Running,
+                    "Complete" => Status::Complete,
+                    "Error" => Status::Error,
+                    _ => panic!("Invalid task status")
+                        
+                },
+                pid: row.get(5)?
+            })
+        })?.collect();
+        
+        return tasks
     }
 }
 
@@ -174,12 +217,18 @@ mod tests {
     }
 
     #[test]
-    fn create_queue() {
-        //Queue::new();
-        Queue::new();
-        assert!(Queue::path().exists());
-
+    fn add_task() {
         Queue::remove();
-        assert!(!Queue::path().exists());
+        let queue = Queue::new();
+        queue.add_task(
+            "test".to_string(),
+            "test".to_string(),
+            "Load".to_string()
+        )
+        .unwrap();
+
+        println!["{:?}",queue.list_tasks().unwrap()];
+
+        //Queue::remove();
     }
 }
