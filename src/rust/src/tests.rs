@@ -1,4 +1,5 @@
 use std::path;
+use chrono;
 
 use crate::queue;
 
@@ -23,9 +24,9 @@ fn add_task() {
     queue::Queue::remove();
     let queue = queue::Queue::new();
     queue.add_task(
-        "test".to_string(),
-        "test".to_string(),
-        "Load".to_string()
+        chrono::offset::Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
+        "echo Hello World".to_string(),
+        vec![queue::Type::Load,queue::Type::Position]
     )
     .unwrap();
 
@@ -33,3 +34,18 @@ fn add_task() {
 
     queue::Queue::remove();
 }
+
+#[test]
+fn type_test() {
+    let type_vec: Vec<queue::Type> = "Load Position"
+        .split(" ")
+        .map(|x| match x {
+            "Time" => queue::Type::Time,
+            "Position" => queue::Type::Position,
+            "Load" => queue::Type::Load,
+            _ => panic!("Task scheduling type not recognised")
+        })
+        .collect();
+    println!["{:?}",type_vec];
+}
+

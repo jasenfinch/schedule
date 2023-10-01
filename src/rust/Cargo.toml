@@ -8,6 +8,7 @@ crate-type = [ 'staticlib' ]
 name = 'schedule'
 
 [dependencies]
+chrono = "0.4.31"
 extendr-api = '*'
 home = "0.5.5"
 rusqlite = "0.29.0"
