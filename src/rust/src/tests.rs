@@ -2,6 +2,7 @@ use std::path;
 use chrono;
 
 use crate::queue;
+use crate::runner;
 
 #[test]
 fn queue_path() {
@@ -27,5 +28,12 @@ fn add_task() {
     println!["{:?}",queue.list_tasks().unwrap()];
 
     queue::Queue::remove();
+}
+
+#[test]
+fn run_task() {
+    let pid = runner::run_command("sleep 20 && echo Hello world");
+
+    println!["{:?}",pid];
 }
 
