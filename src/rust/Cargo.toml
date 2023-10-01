@@ -9,6 +9,7 @@ name = 'schedule'
 
 [dependencies]
 chrono = "0.4.31"
+crypto-hash = "0.3.4"
 extendr-api = '*'
 home = "0.5.5"
 rusqlite = "0.29.0"

@@ -2,6 +2,7 @@ use std::path;
 use std::fs;
 use chrono;
 use rusqlite::{Connection, Result};
+use crypto_hash::{hex_digest, Algorithm};
 
 #[derive(Debug)]
 enum Status {
@@ -32,7 +33,7 @@ impl Type {
 
 #[derive(Debug)]
 pub struct Task {
-    id: u32,
+    id: String,
     time: chrono::NaiveDateTime, 
     command: String, 
     schedule_type: Vec<Type>,
@@ -76,7 +77,7 @@ impl Queue {
 
         conn.execute(
             "create table if not exists queue (
-                id integer primary key not null unique,
+                id text primary key not null unique,
                 time text not null,
                 command text not null,
                 schedule_type text not null,
@@ -112,8 +113,10 @@ impl Queue {
 
     pub fn add_task(&self, time: String, command: String, schedule_type: Vec<Type>) -> Result<()> {
 
+        let task_id = hex_digest(Algorithm::SHA256, format!("{time} {command}").as_bytes());
+
         let task = Task {
-            id: 1,
+            id: task_id,
             time: chrono::NaiveDateTime::parse_from_str(time.as_str(),"%Y-%m-%d %H:%M:%S")
                 .expect("Cannot parse specified date and time"),
             command,
@@ -125,8 +128,9 @@ impl Queue {
         let conn = &self.conn;
 
         conn.execute(
-            "INSERT INTO queue (time, command, schedule_type, status) values (?1, ?2, ?3, ?4)",
-            [task.time.to_string(),
+            "INSERT INTO queue (id, time, command, schedule_type, status) values (?1, ?2, ?3, ?4, ?5)",
+            [task.id,
+                task.time.to_string(),
                 task.command,
                 task.schedule_type
                     .into_iter()
@@ -155,7 +159,7 @@ impl Queue {
 
         let tasks = query.query_map((), |row| {
             Ok(Task {
-                id: row.get::<usize,u32>(0)?,
+                id: row.get::<usize,String>(0)?,
                 time: chrono::NaiveDateTime::parse_from_str(row.get::<usize,String>(1)?.as_str(),"%Y-%m-%d %H:%M:%S")
                     .unwrap(),
                 command: row.get(2)?,

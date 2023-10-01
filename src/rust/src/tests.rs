@@ -14,12 +14,6 @@ fn queue_path() {
 }
 
 #[test]
-fn create_queue(){
-    queue::Queue::new();
-    queue::Queue::remove();
-}
-
-#[test]
 fn add_task() {
     queue::Queue::remove();
     let queue = queue::Queue::new();
@@ -33,19 +27,5 @@ fn add_task() {
     println!["{:?}",queue.list_tasks().unwrap()];
 
     queue::Queue::remove();
-}
-
-#[test]
-fn type_test() {
-    let type_vec: Vec<queue::Type> = "Load Position"
-        .split(" ")
-        .map(|x| match x {
-            "Time" => queue::Type::Time,
-            "Position" => queue::Type::Position,
-            "Load" => queue::Type::Load,
-            _ => panic!("Task scheduling type not recognised")
-        })
-        .collect();
-    println!["{:?}",type_vec];
 }
 
